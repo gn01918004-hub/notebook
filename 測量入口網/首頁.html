@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>測量入口網</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #fff; --text: #1f2933; --muted: #6b7680;
+    --line: #e2e5e9; --accent: #1d6f8f; --accent-soft: #e6f1f5;
+    --warn: #9a5b00; --warn-soft: #fff4e0; --empty: #a0a7ae;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.7 "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+  a { color: var(--accent); }
+  header {
+    position: sticky; top: 0; z-index: 5; background: var(--accent); color: #fff;
+    display: flex; gap: 16px; align-items: center; padding: 10px 20px;
+  }
+  header h1 { margin: 0; font-size: 20px; white-space: nowrap; cursor: pointer; }
+  header input {
+    flex: 1; max-width: 480px; padding: 8px 12px; border: 0; border-radius: 6px; font: inherit;
+  }
+  .layout { display: flex; max-width: 1200px; margin: 0 auto; }
+  nav {
+    width: 240px; flex-shrink: 0; padding: 16px 8px 40px 16px;
+    position: sticky; top: 52px; height: calc(100vh - 52px); overflow-y: auto;
+  }
+  nav h3 { margin: 16px 0 4px; font-size: 13px; color: var(--muted); letter-spacing: .05em; }
+  nav a {
+    display: block; padding: 5px 10px; border-radius: 6px; text-decoration: none; color: var(--text);
+    font-size: 15px;
+  }
+  nav a:hover { background: var(--accent-soft); }
+  nav a.on { background: var(--accent); color: #fff; }
+  main { flex: 1; min-width: 0; padding: 20px 24px 60px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; }
+  h2 { margin: 0 0 4px; font-size: 26px; }
+  .tag { display: inline-block; font-size: 13px; color: var(--accent); background: var(--accent-soft); padding: 1px 8px; border-radius: 10px; }
+  h4 { margin: 20px 0 6px; font-size: 17px; border-left: 4px solid var(--accent); padding-left: 8px; }
+  ul, ol { margin: 4px 0; padding-left: 24px; }
+  .empty { color: var(--empty); font-style: italic; }
+  .fees { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .fee { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+  .fee b { display: block; margin-bottom: 2px; }
+  .note { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 10px 14px; margin-top: 20px; font-size: 14px; }
+  .law { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+  .law p { margin: 4px 0; }
+  .meta { font-size: 13px; color: var(--muted); }
+  .status-有效 { color: #1b7f3b; } .status-已停止適用 { color: #b42318; } .status-待確認 { color: var(--warn); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .tile { display: block; text-decoration: none; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--panel); }
+  .tile:hover { border-color: var(--accent); }
+  .tile small { display: block; color: var(--muted); }
+  mark { background: #ffe58a; }
+  .toolbar { float: right; }
+  .toolbar button { font: inherit; font-size: 14px; padding: 4px 12px; border: 1px solid var(--line); background: #fff; border-radius: 6px; cursor: pointer; }
+  @media (max-width: 760px) {
+    .layout { display: block; }
+    nav { position: static; width: auto; height: auto; padding: 8px 16px; }
+    nav a { display: inline-block; }
+    main { padding: 12px 16px 40px; }
+    header { flex-wrap: wrap; padding: 10px 16px; }
+  }
+  @media print {
+    header, nav, .toolbar { display: none; }
+    body { background: #fff; }
+    .card { border: 0; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 onclick="location.hash=''">測量入口網</h1>
+  <input id="q" type="search" placeholder="搜尋業務、收費、法規…（例：協界、退費、0.25公頃）">
+</header>
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+
+<script src="data.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const EMPTY = '<p class="empty">尚未整理，歡迎補充（修改 data.js）。</p>';
+const list = (arr, tag = 'ul') => arr && arr.length ? `<${tag}>${arr.map(x => `<li>${esc(x)}</li>`).join('')}</${tag}>` : EMPTY;
+const byId = (arr, id) => arr.find(x => x.id === id);
+const groups = [...new Set(業務.map(b => b.分類))];
+
+function renderNav(active) {
+  let h = `<a href="#" class="${active === '' ? 'on' : ''}">首頁</a>`;
+  for (const g of groups) {
+    h += `<h3>${esc(g)}</h3>`;
+    for (const b of 業務.filter(b => b.分類 === g))
+      h += `<a href="#${encodeURIComponent(b.id)}" class="${active === b.id ? 'on' : ''}">${esc(b.名稱)}</a>`;
+  }
+  h += `<h3>參考資料</h3>
+    <a href="#法規函釋" class="${active === '法規函釋' ? 'on' : ''}">法規與函釋</a>
+    <a href="#小工具" class="${active === '小工具' ? 'on' : ''}">小工具</a>`;
+  $('#nav').innerHTML = h;
+}
+
+function toolTile(t) {
+  return `<a class="tile" href="${esc(t.連結)}" target="_blank">${esc(t.名稱)}<small>${esc(t.說明)}</small></a>`;
+}
+
+function lawBlock(l) {
+  const meta = [l.類型, l.字號, l.日期].filter(Boolean).map(esc).join('　');
+  const eff = l.效力 ? `　<span class="status-${esc(l.效力)}">【${esc(l.效力)}】</span>` : '';
+  const body = l.內容 ? l.內容.split('\n').map(p => `<p>${esc(p)}</p>`).join('') : EMPTY;
+  return `<div class="law"><b>${esc(l.名稱)}</b><div class="meta">${meta}${eff}</div>${body}</div>`;
+}
+
+function renderHome() {
+  $('#main').innerHTML = `
+    <div class="card">
+      <h2>測量入口網</h2>
+      <p>依業務查詢<b>收費、文件、作業步驟、注意事項</b>，以及相關法規、函釋和小工具。</p>
+      <ul>
+        <li>從左側選單選擇業務，或在上方搜尋框輸入關鍵字。</li>
+        <li>內容為簡化版本，標示「尚未整理」的部分會陸續補充。</li>
+        <li>正式作業前，請以最新法規、函釋及所內規定為準。</li>
+      </ul>
+    </div>
+    ${groups.map(g => `<div class="card"><h4 style="margin-top:0">${esc(g)}</h4><div class="grid">
+      ${業務.filter(b => b.分類 === g).map(b => `<a class="tile" href="#${encodeURIComponent(b.id)}">${esc(b.名稱)}${b.簡介 ? `<small>${esc(b.簡介)}</small>` : ''}</a>`).join('')}
+    </div></div>`).join('')}
+    <div class="card"><h4 style="margin-top:0">常用小工具</h4><div class="grid">${小工具.map(toolTile).join('')}</div></div>`;
+}
+
+function renderItem(b) {
+  const fees = b.收費 && b.收費.length
+    ? `<div class="fees">${b.收費.map(f => `<div class="fee"><b>${esc(f.項目)}</b>${list(f.內容)}</div>`).join('')}</div>`
+    : EMPTY;
+  const laws = (b.法規 || []).map(id => byId(法規函釋, id)).filter(Boolean);
+  const tools = (b.工具 || []).map(id => byId(小工具, id)).filter(Boolean);
+  const rel = (b.相關業務 || []).map(id => byId(業務, id)).filter(Boolean);
+  $('#main').innerHTML = `
+    <div class="card">
+      <div class="toolbar"><button onclick="print()">列印</button></div>
+      <span class="tag">${esc(b.分類)}</span>
+      <h2>${esc(b.名稱)}</h2>
+      ${b.簡介 ? `<p>${esc(b.簡介)}</p>` : ''}
+      <h4>文件</h4>${list(b.文件)}
+      <h4>作業步驟</h4>${list(b.步驟, 'ol')}
+      <h4>注意事項</h4>${list(b.注意)}
+      <h4>收費</h4>${fees}
+      <h4>相關法規與函釋</h4>${laws.length ? laws.map(lawBlock).join('') : EMPTY}
+      ${tools.length ? `<h4>相關小工具</h4><div class="grid">${tools.map(toolTile).join('')}</div>` : ''}
+      ${rel.length ? `<h4>相關業務</h4><div class="grid">${rel.map(r => `<a class="tile" href="#${encodeURIComponent(r.id)}">${esc(r.名稱)}</a>`).join('')}</div>` : ''}
+      <div class="note">${共同注意.map(esc).join('<br>')}</div>
+    </div>`;
+}
+
+function renderLaws() {
+  const sec = t => {
+    const items = 法規函釋.filter(l => l.類型 === t);
+    return `<h4>${t}</h4>${items.length ? items.map(lawBlock).join('') : EMPTY}`;
+  };
+  $('#main').innerHTML = `<div class="card"><h2>法規與函釋</h2>
+    <p class="meta">法規條文請以全國法規資料庫最新版本為準；函釋請留意效力狀態。</p>
+    ${sec('法規')}${sec('函釋')}</div>`;
+}
+
+function renderTools() {
+  $('#main').innerHTML = `<div class="card"><h2>小工具</h2><div class="grid">${小工具.map(toolTile).join('')}</div></div>`;
+}
+
+function textOf(o) {
+  if (Array.isArray(o)) return o.map(textOf).join('　');
+  if (o && typeof o === 'object') return Object.entries(o).filter(([k]) => !['id', '連結', '工具', '法規', '相關業務'].includes(k)).map(([, v]) => textOf(v)).join('　');
+  return String(o ?? '');
+}
+
+function renderSearch(q) {
+  const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = o => { const t = textOf(o).toLowerCase(); return terms.every(k => t.includes(k)); };
+  const hl = s => { let h = esc(s); for (const k of terms) h = h.replace(new RegExp(esc(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); return h; };
+  const snippet = o => {
+    const t = textOf(o).replace(/\n/g, ' ');
+    const i = t.toLowerCase().indexOf(terms[0]);
+    return hl(t.slice(Math.max(0, i - 30), i + 60));
+  };
+  const bs = 業務.filter(hit), ls = 法規函釋.filter(hit), ts = 小工具.filter(hit);
+  const row = (href, name, o) => `<a class="tile" href="${href}" style="margin-bottom:8px">${hl(name)}<small>…${snippet(o)}…</small></a>`;
+  $('#main').innerHTML = `<div class="card"><h2>搜尋：${esc(q)}</h2>
+    ${!bs.length && !ls.length && !ts.length ? '<p class="empty">找不到相關內容。</p>' : ''}
+    ${bs.length ? `<h4>業務</h4>${bs.map(b => row('#' + encodeURIComponent(b.id), b.名稱, b)).join('')}` : ''}
+    ${ls.length ? `<h4>法規與函釋</h4>${ls.map(l => row('#法規函釋', l.名稱, l)).join('')}` : ''}
+    ${ts.length ? `<h4>小工具</h4>${ts.map(t => `<a class="tile" href="${esc(t.連結)}" target="_blank" style="margin-bottom:8px">${hl(t.名稱)}<small>${hl(t.說明)}</small></a>`).join('')}` : ''}
+  </div>`;
+}
+
+function route() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const b = byId(業務, id);
+  renderNav(b ? id : id === '法規函釋' || id === '小工具' ? id : '');
+  if (b) renderItem(b);
+  else if (id === '法規函釋') renderLaws();
+  else if (id === '小工具') renderTools();
+  else renderHome();
+  window.scrollTo(0, 0);
+}
+
+$('#q').addEventListener('input', e => {
+  const q = e.target.value;
+  if (q.trim()) { renderNav(null); renderSearch(q); } else route();
+});
+window.addEventListener('hashchange', () => { $('#q').value = ''; route(); });
+route();
+</script>
+</body>
+</html>
