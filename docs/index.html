@@ -49,6 +49,10 @@
   .note { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 10px 14px; margin-top: 20px; font-size: 14px; }
   .law { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
   .law p { margin: 4px 0; }
+  .law summary { cursor: pointer; list-style-position: outside; margin-left: 16px; }
+  .law[open] summary { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+  .gist { font-size: 14px; margin-top: 2px; }
+  @media print { .law { break-inside: avoid; } }
   .meta { font-size: 13px; color: var(--muted); }
   .status-有效 { color: #1b7f3b; } .status-已停止適用 { color: #b42318; } .status-待確認 { color: var(--warn); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
@@ -108,11 +112,15 @@ function toolTile(t) {
   return `<a class="tile" href="${esc(t.連結)}" target="_blank">${esc(t.名稱)}<small>${esc(t.說明)}</small></a>`;
 }
 
-function lawBlock(l) {
-  const meta = [l.類型, l.字號, l.日期].filter(Boolean).map(esc).join('　');
+function lawBlock(l, open = false) {
+  const meta = [l.類型, l.字號].filter(Boolean).map(esc).join('　');
   const eff = l.效力 ? `　<span class="status-${esc(l.效力)}">【${esc(l.效力)}】</span>` : '';
   const body = l.內容 ? l.內容.split('\n').map(p => `<p>${esc(p)}</p>`).join('') : EMPTY;
-  return `<div class="law"><b>${esc(l.名稱)}</b><div class="meta">${meta}${eff}</div>${body}</div>`;
+  const used = 業務.filter(b => (b.法規 || []).includes(l.id) || (l.id === '收費標準' && b.收費));
+  const back = used.length && l.id !== '收費標準'
+    ? `<p class="meta">相關業務：${used.map(b => `<a href="#${encodeURIComponent(b.id)}">${esc(b.名稱)}</a>`).join('、')}</p>` : '';
+  return `<details class="law" id="law-${esc(l.id)}"${open ? ' open' : ''}><summary><b>${esc(l.名稱)}</b>${eff}
+    <div class="meta">${meta}</div>${l.要旨 ? `<div class="gist">${esc(l.要旨)}</div>` : ''}</summary>${body}${back}</details>`;
 }
 
 function renderHome() {
@@ -136,7 +144,9 @@ function renderItem(b) {
   const fees = b.收費 && b.收費.length
     ? `<div class="fees">${b.收費.map(f => `<div class="fee"><b>${esc(f.項目)}</b>${list(f.內容)}</div>`).join('')}</div>`
     : EMPTY;
-  const laws = (b.法規 || []).map(id => byId(法規函釋, id)).filter(Boolean);
+  const lawIds = [...(b.法規 || [])];
+  if (b.收費 && !lawIds.includes('收費標準')) lawIds.push('收費標準');
+  const laws = lawIds.map(id => byId(法規函釋, id)).filter(Boolean);
   const tools = (b.工具 || []).map(id => byId(小工具, id)).filter(Boolean);
   const rel = (b.相關業務 || []).map(id => byId(業務, id)).filter(Boolean);
   $('#main').innerHTML = `
@@ -148,22 +158,25 @@ function renderItem(b) {
       <h4>文件</h4>${list(b.文件)}
       <h4>作業步驟</h4>${list(b.步驟, 'ol')}
       <h4>注意事項</h4>${list(b.注意)}
+      ${b.經驗 && b.經驗.length ? `<h4>實務經驗與案例</h4>${list(b.經驗)}` : ''}
       <h4>收費</h4>${fees}
-      <h4>相關法規與函釋</h4>${laws.length ? laws.map(lawBlock).join('') : EMPTY}
+      <h4>相關法規與函釋 <span class="meta">（點標題展開全文）</span></h4>${laws.length ? laws.map(l => lawBlock(l)).join('') : EMPTY}
       ${tools.length ? `<h4>相關小工具</h4><div class="grid">${tools.map(toolTile).join('')}</div>` : ''}
       ${rel.length ? `<h4>相關業務</h4><div class="grid">${rel.map(r => `<a class="tile" href="#${encodeURIComponent(r.id)}">${esc(r.名稱)}</a>`).join('')}</div>` : ''}
       <div class="note">${共同注意.map(esc).join('<br>')}</div>
     </div>`;
 }
 
-function renderLaws() {
+function renderLaws(focus) {
+  const types = ['法規', '函釋', '會議紀錄', ...new Set(法規函釋.map(l => l.類型))].filter((t, i, a) => a.indexOf(t) === i);
   const sec = t => {
-    const items = 法規函釋.filter(l => l.類型 === t);
-    return `<h4>${t}</h4>${items.length ? items.map(lawBlock).join('') : EMPTY}`;
+    const items = 法規函釋.filter(l => l.類型 === t).sort((a, b) => (b.日期 || '').localeCompare(a.日期 || ''));
+    if (!items.length && t === '會議紀錄') return '';
+    return `<h4>${t}${t !== '法規' ? '<span class="meta">（新到舊）</span>' : ''}</h4>${items.length ? items.map(l => lawBlock(l, l.id === focus)).join('') : EMPTY}`;
   };
   $('#main').innerHTML = `<div class="card"><h2>法規與函釋</h2>
-    <p class="meta">法規條文請以全國法規資料庫最新版本為準；函釋請留意效力狀態。</p>
-    ${sec('法規')}${sec('函釋')}</div>`;
+    <p class="meta">點標題展開全文。法規條文請以全國法規資料庫最新版本為準；函釋請留意效力狀態。</p>
+    ${types.map(sec).join('')}</div>`;
 }
 
 function renderTools() {
@@ -190,20 +203,24 @@ function renderSearch(q) {
   $('#main').innerHTML = `<div class="card"><h2>搜尋：${esc(q)}</h2>
     ${!bs.length && !ls.length && !ts.length ? '<p class="empty">找不到相關內容。</p>' : ''}
     ${bs.length ? `<h4>業務</h4>${bs.map(b => row('#' + encodeURIComponent(b.id), b.名稱, b)).join('')}` : ''}
-    ${ls.length ? `<h4>法規與函釋</h4>${ls.map(l => row('#法規函釋', l.名稱, l)).join('')}` : ''}
+    ${ls.length ? `<h4>法規與函釋</h4>${ls.map(l => row('#法規函釋/' + encodeURIComponent(l.id), l.名稱, l)).join('')}` : ''}
     ${ts.length ? `<h4>小工具</h4>${ts.map(t => `<a class="tile" href="${esc(t.連結)}" target="_blank" style="margin-bottom:8px">${hl(t.名稱)}<small>${hl(t.說明)}</small></a>`).join('')}` : ''}
   </div>`;
 }
 
 function route() {
-  const id = decodeURIComponent(location.hash.slice(1));
+  const [id, sub] = decodeURIComponent(location.hash.slice(1)).split('/');
   const b = byId(業務, id);
   renderNav(b ? id : id === '法規函釋' || id === '小工具' ? id : '');
+  window.scrollTo(0, 0);
   if (b) renderItem(b);
-  else if (id === '法規函釋') renderLaws();
+  else if (id === '法規函釋') {
+    renderLaws(sub);
+    const el = sub && document.getElementById('law-' + sub);
+    if (el) el.scrollIntoView();
+  }
   else if (id === '小工具') renderTools();
   else renderHome();
-  window.scrollTo(0, 0);
 }
 
 $('#q').addEventListener('input', e => {
