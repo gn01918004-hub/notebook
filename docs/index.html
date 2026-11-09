@@ -175,7 +175,7 @@ function renderLaws(focus) {
     return `<h4>${t}${t !== '法規' ? '<span class="meta">（新到舊）</span>' : ''}</h4>${items.length ? items.map(l => lawBlock(l, l.id === focus)).join('') : EMPTY}`;
   };
   $('#main').innerHTML = `<div class="card"><h2>法規與函釋</h2>
-    <p class="meta">點標題展開全文。法規條文請以全國法規資料庫最新版本為準；函釋請留意效力狀態。</p>
+    <p class="meta">點標題展開全文。法規條文請以全國法規資料庫最新版本為準；函釋請留意效力狀態，函釋內容互相衝突時，以發文日期較新者為準。</p>
     ${types.map(sec).join('')}</div>`;
 }
 
