@@ -52,6 +52,14 @@
   .law summary { cursor: pointer; list-style-position: outside; margin-left: 16px; }
   .law[open] summary { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
   .gist { font-size: 14px; margin-top: 2px; }
+  .art { padding: 10px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 70px; }
+  .art p { margin: 4px 0; }
+  .art.focus { background: var(--warn-soft); border-radius: 6px; padding: 10px; }
+  .intent { font-size: 14px; color: var(--muted); }
+  .intent summary { cursor: pointer; }
+  .lawq { width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; margin: 8px 0; }
+  .toc ul { columns: 2; font-size: 14px; }
+  @media (max-width: 760px) { .toc ul { columns: 1; } }
   @media print { .law { break-inside: avoid; } }
   .meta { font-size: 13px; color: var(--muted); }
   .status-有效 { color: #1b7f3b; } .status-已停止適用 { color: #b42318; } .status-待確認 { color: var(--warn); }
@@ -87,6 +95,7 @@
 </div>
 
 <script src="data.js"></script>
+<script src="laws.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -103,9 +112,23 @@ function renderNav(active) {
       h += `<a href="#${encodeURIComponent(b.id)}" class="${active === b.id ? 'on' : ''}">${esc(b.名稱)}</a>`;
   }
   h += `<h3>參考資料</h3>
-    <a href="#法規函釋" class="${active === '法規函釋' ? 'on' : ''}">法規與函釋</a>
+    <a href="#法規函釋" class="${active === '法規函釋' ? 'on' : ''}">函釋與會議紀錄</a>
+    ${法規表.map(L => `<a href="${artHref(L.id)}" class="${active === '法規全文/' + L.id ? 'on' : ''}">${esc(L.名稱)}</a>`).join('')}
     <a href="#小工具" class="${active === '小工具' ? 'on' : ''}">小工具</a>`;
   $('#nav').innerHTML = h;
+}
+
+const 法規表 = typeof 法規全文 === 'undefined' ? [] : 法規全文;
+const artLabel = n => { const [a, b] = String(n).split('.'); return `第${a}條${b ? '之' + b : ''}`; };
+const artHref = (lid, n) => `#法規全文/${encodeURIComponent(lid)}${n ? '/' + encodeURIComponent(n) : ''}`;
+function findArt(ref) {
+  const [lid, n] = ref.split(':'); const L = byId(法規表, lid);
+  return L && { L, a: L.條.find(a => a.號 === n) };
+}
+function artBlock(L, a) {
+  const body = a.內容.split('\n').map(p => `<p>${esc(p)}</p>`).join('');
+  const note = a.立法意旨 ? `<details class="intent"><summary>立法意旨／附註</summary>${a.立法意旨.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</details>` : '';
+  return `<div class="art" id="art-${esc(L.id)}-${esc(a.號)}"><b>${artLabel(a.號)}</b>${a.標題 ? `　<span class="meta">${esc(a.標題.replace(/^（|）$/g, ''))}</span>` : ''}${body}${note}</div>`;
 }
 
 function toolTile(t) {
@@ -137,6 +160,8 @@ function renderHome() {
     ${groups.map(g => `<div class="card"><h4 style="margin-top:0">${esc(g)}</h4><div class="grid">
       ${業務.filter(b => b.分類 === g).map(b => `<a class="tile" href="#${encodeURIComponent(b.id)}">${esc(b.名稱)}${b.簡介 ? `<small>${esc(b.簡介)}</small>` : ''}</a>`).join('')}
     </div></div>`).join('')}
+    <div class="card"><h4 style="margin-top:0">法規全文</h4><div class="grid">${法規表.map(L => `<a class="tile" href="${artHref(L.id)}">${esc(L.名稱)}<small>${L.條.length} 條</small></a>`).join('')}
+      <a class="tile" href="#法規函釋">函釋與會議紀錄<small>${法規函釋.length} 則</small></a></div></div>
     <div class="card"><h4 style="margin-top:0">常用小工具</h4><div class="grid">${小工具.map(toolTile).join('')}</div></div>`;
 }
 
@@ -147,6 +172,7 @@ function renderItem(b) {
   const lawIds = [...(b.法規 || [])];
   if (b.收費 && !lawIds.includes('收費標準')) lawIds.push('收費標準');
   const laws = lawIds.map(id => byId(法規函釋, id)).filter(Boolean);
+  const arts = (b.條文 || []).map(findArt).filter(x => x && x.a);
   const tools = (b.工具 || []).map(id => byId(小工具, id)).filter(Boolean);
   const rel = (b.相關業務 || []).map(id => byId(業務, id)).filter(Boolean);
   $('#main').innerHTML = `
@@ -160,7 +186,9 @@ function renderItem(b) {
       <h4>注意事項</h4>${list(b.注意)}
       ${b.經驗 && b.經驗.length ? `<h4>實務經驗與案例</h4>${list(b.經驗)}` : ''}
       <h4>收費</h4>${fees}
-      <h4>相關法規與函釋 <span class="meta">（點標題展開全文）</span></h4>${laws.length ? laws.map(l => lawBlock(l)).join('') : EMPTY}
+      ${arts.length ? `<h4>相關條文</h4>${arts.map(({ L, a }) => `<details class="law"><summary><b>${esc(L.名稱)} ${artLabel(a.號)}</b>${a.標題 ? `　<span class="meta">${esc(a.標題.replace(/^（|）$/g, ''))}</span>` : ''}
+        <div class="gist">${esc(a.內容.split('\n')[0].slice(0, 60))}${a.內容.length > 60 ? '…' : ''}</div></summary>${artBlock(L, a)}<p class="meta"><a href="${artHref(L.id, a.號)}">到法規全文查看前後條文 →</a></p></details>`).join('')}` : ''}
+      <h4>相關函釋 <span class="meta">（點標題展開全文）</span></h4>${laws.length ? laws.map(l => lawBlock(l)).join('') : EMPTY}
       ${tools.length ? `<h4>相關小工具</h4><div class="grid">${tools.map(toolTile).join('')}</div>` : ''}
       ${rel.length ? `<h4>相關業務</h4><div class="grid">${rel.map(r => `<a class="tile" href="#${encodeURIComponent(r.id)}">${esc(r.名稱)}</a>`).join('')}</div>` : ''}
       <div class="note">${共同注意.map(esc).join('<br>')}</div>
@@ -179,13 +207,35 @@ function renderLaws(focus) {
     ${types.map(sec).join('')}</div>`;
 }
 
+function renderLawText(L, focus) {
+  const chapters = [...new Set(L.條.map(a => a.章))].filter(Boolean);
+  $('#main').innerHTML = `<div class="card">
+    <span class="tag">法規全文</span><h2>${esc(L.名稱)}</h2>
+    <p class="meta">${esc(L.版本)}<br>共 ${L.條.length} 條。本頁為內部整理版本，正式條文請以全國法規資料庫為準。</p>
+    <input id="lawq" class="lawq" type="search" placeholder="在本法規內搜尋（例：界標、撤回、法定空地）">
+    ${chapters.length ? `<details class="toc"><summary>目錄（${chapters.length} 章）</summary><ul>${chapters.map(c => {
+      const a = L.條.find(x => x.章 === c); return `<li><a href="${artHref(L.id, a.號)}">${esc(c)}</a> <span class="meta">${artLabel(a.號)}起</span></li>`; }).join('')}</ul></details>` : ''}
+    <div id="arts"></div></div>`;
+  const draw = q => {
+    const t = q.trim(); let last = null, h = '';
+    const list = t ? L.條.filter(a => (a.號 + a.標題 + a.內容 + (a.立法意旨 || '')).includes(t) || artLabel(a.號).includes(t)) : L.條;
+    for (const a of list) { if (a.章 !== last) { h += `<h4>${esc(a.章 || L.名稱)}</h4>`; last = a.章; } h += artBlock(L, a); }
+    $('#arts').innerHTML = t ? `<p class="meta">找到 ${list.length} 條</p>` + h : h;
+    if (t) for (const el of $('#arts').querySelectorAll('.art p')) el.innerHTML = el.innerHTML.split(esc(t)).join(`<mark>${esc(t)}</mark>`);
+  };
+  draw('');
+  $('#lawq').addEventListener('input', e => draw(e.target.value));
+  const el = focus && document.getElementById(`art-${L.id}-${focus}`);
+  if (el) { el.classList.add('focus'); el.scrollIntoView(); window.scrollBy(0, -70); }
+}
+
 function renderTools() {
   $('#main').innerHTML = `<div class="card"><h2>小工具</h2><div class="grid">${小工具.map(toolTile).join('')}</div></div>`;
 }
 
 function textOf(o) {
   if (Array.isArray(o)) return o.map(textOf).join('　');
-  if (o && typeof o === 'object') return Object.entries(o).filter(([k]) => !['id', '連結', '工具', '法規', '相關業務'].includes(k)).map(([, v]) => textOf(v)).join('　');
+  if (o && typeof o === 'object') return Object.entries(o).filter(([k]) => !['id', '連結', '工具', '法規', '相關業務', '條文'].includes(k)).map(([, v]) => textOf(v)).join('　');
   return String(o ?? '');
 }
 
@@ -199,11 +249,13 @@ function renderSearch(q) {
     return hl(t.slice(Math.max(0, i - 30), i + 60));
   };
   const bs = 業務.filter(hit), ls = 法規函釋.filter(hit), ts = 小工具.filter(hit);
+  const as = 法規表.flatMap(L => L.條.filter(a => hit({ x: a.標題 + a.內容 })).map(a => ({ L, a })));
   const row = (href, name, o) => `<a class="tile" href="${href}" style="margin-bottom:8px">${hl(name)}<small>…${snippet(o)}…</small></a>`;
   $('#main').innerHTML = `<div class="card"><h2>搜尋：${esc(q)}</h2>
-    ${!bs.length && !ls.length && !ts.length ? '<p class="empty">找不到相關內容。</p>' : ''}
+    ${!bs.length && !ls.length && !ts.length && !as.length ? '<p class="empty">找不到相關內容。</p>' : ''}
     ${bs.length ? `<h4>業務</h4>${bs.map(b => row('#' + encodeURIComponent(b.id), b.名稱, b)).join('')}` : ''}
     ${ls.length ? `<h4>法規與函釋</h4>${ls.map(l => row('#法規函釋/' + encodeURIComponent(l.id), l.名稱, l)).join('')}` : ''}
+    ${as.length ? `<h4>法規條文 <span class="meta">（${as.length} 條${as.length > 30 ? '，顯示前 30 條；可加關鍵字縮小範圍' : ''}）</span></h4>${as.slice(0, 30).map(({ L, a }) => row(artHref(L.id, a.號), L.名稱 + ' ' + artLabel(a.號), { x: a.內容 })).join('')}` : ''}
     ${ts.length ? `<h4>小工具</h4>${ts.map(t => `<a class="tile" href="${esc(t.連結)}" target="_blank" style="margin-bottom:8px">${hl(t.名稱)}<small>${hl(t.說明)}</small></a>`).join('')}` : ''}
   </div>`;
 }
@@ -211,9 +263,11 @@ function renderSearch(q) {
 function route() {
   const [id, sub] = decodeURIComponent(location.hash.slice(1)).split('/');
   const b = byId(業務, id);
-  renderNav(b ? id : id === '法規函釋' || id === '小工具' ? id : '');
+  const L = id === '法規全文' && byId(法規表, sub);
+  renderNav(b ? id : L ? '法規全文/' + L.id : id === '法規函釋' || id === '小工具' ? id : '');
   window.scrollTo(0, 0);
   if (b) renderItem(b);
+  else if (L) renderLawText(L, decodeURIComponent(location.hash.slice(1)).split('/')[2]);
   else if (id === '法規函釋') {
     renderLaws(sub);
     const el = sub && document.getElementById('law-' + sub);
