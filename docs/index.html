@@ -40,6 +40,8 @@
   nav a.on { background: var(--accent); color: #fff; }
   nav .cnt { float: right; font-size: 12px; color: var(--muted); }
   nav a.on .cnt { color: #ffffffb0; }
+  nav details.minor { margin-top: 6px; font-size: 13px; }
+  nav details.minor > summary { color: var(--muted); }
   main { flex: 1; min-width: 0; padding: 20px 24px 60px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; }
   h2 { margin: 0 0 4px; font-size: 26px; }
@@ -149,6 +151,8 @@ const 歷史法規 = typeof 歷史法規全文 === 'undefined' ? [] : 歷史法�
 const 法規表 = [...現行法規, ...歷史法規];
 const 沿革表 = typeof 沿革 === 'undefined' ? [] : 沿革;
 const 沿革分類 = [...new Set(沿革表.map(t => t.分類))];
+const 次要分類 = 沿革分類.filter(c => 沿革表.filter(t => t.分類 === c).every(t => t.次要));
+const 主要分類 = 沿革分類.filter(c => !次要分類.includes(c));
 const 函釋 = 法規函釋.filter(l => l.類型 !== '法規');
 const byDate = (a, b) => (b.日期 || '').localeCompare(a.日期 || '');
 const rocDate = d => { if (!d) return ''; const [y, m, dd] = d.split('-').map(Number); return `${y - 1911}.${m}.${dd}`; };
@@ -199,13 +203,15 @@ function renderNav(active) {
     h += grp(g, bs.map(b => `<a href="${href(b.id)}"${on(b.id)}>${esc(b.名稱)}</a>`).join(''), bs.some(b => b.id === active));
   }
   h += `<div class="sec">函釋沿革</div>`;
-  h += 沿革分類.map(c => `<a href="${href('沿革', c)}"${on('沿革/' + c)}>${esc(c)}<span class="cnt">${沿革表.filter(t => t.分類 === c).length}</span></a>`).join('');
+  const catLink = c => `<a href="${href('沿革', c)}"${on('沿革/' + c)}>${esc(c)}<span class="cnt">${沿革表.filter(t => t.分類 === c).length}</span></a>`;
+  h += 主要分類.map(catLink).join('');
   h += `<a href="#函釋"${on('函釋')}>全部函釋（依日期）<span class="cnt">${函釋.length}</span></a>`;
   h += `<div class="sec">法規</div>`;
   h += 現行法規.map(L => `<a href="${artHref(L.id)}"${on('法規全文/' + L.id)}>${esc(L.名稱)}</a>`).join('');
   h += 法規函釋.filter(l => l.類型 === '法規').map(l => `<a href="${href('法規', l.id)}"${on('法規/' + l.id)}>${esc(l.名稱.replace(/（.*?）/g, ''))}</a>`).join('');
   h += `<a href="#歷史法規"${on('歷史法規') || (active || '').startsWith('法規全文/h') ? ' class="on"' : ''}>歷史法規沿革</a>`;
   h += `<div class="sec">其他</div><a href="#小工具"${on('小工具')}>小工具</a>`;
+  if (次要分類.length) h += `<details class="minor"${次要分類.some(c => active === '沿革/' + c) ? ' open' : ''}><summary>其他函釋</summary>${次要分類.map(catLink).join('')}</details>`;
   $('#nav').innerHTML = h;
   $('#nav').classList.remove('open');
 }
@@ -226,7 +232,7 @@ function renderHome() {
       ${groups.map(g => `<p class="meta" style="margin:10px 0 4px">${esc(g)}</p><div class="grid">${業務.filter(b => b.分類 === g).map(b => tile(href(b.id), b.名稱)).join('')}</div>`).join('')}
     </div>
     <div class="card"><h3 class="card-h">函釋沿革</h3><div class="grid">
-      ${沿革分類.map(c => tile(href('沿革', c), c, 沿革表.filter(t => t.分類 === c).map(t => t.名稱).join('、'))).join('')}
+      ${主要分類.map(c => tile(href('沿革', c), c, 沿革表.filter(t => t.分類 === c).map(t => t.名稱).join('、'))).join('')}
     </div></div>
     <div class="card"><h3 class="card-h">常用小工具</h3><div class="grid">${小工具.map(toolTile).join('')}</div></div>
     <p class="meta">正式作業前，請以最新法規、函釋及所內規定為準。函釋互相衝突時，以發文日期較新者為準；其他縣市的函釋僅供參考。</p>`;
