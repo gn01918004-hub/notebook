@@ -32,9 +32,40 @@ const 小工具 = [
   {
     id: 'courtPartition',
     名稱: '共有物分割複丈費清冊',
-    說明: '法院共有物分割案件的複丈費計算與清冊列印。',
+    說明: '法院共有物分割案件：貼上名單辨識持分、自動算規費、列印清冊。',
     連結: 'https://gn01918004-hub.github.io/courtPartition-/',
-    下載: 'https://github.com/gn01918004-hub/courtPartition-/releases/latest',
+    下載: 'https://github.com/gn01918004-hub/courtPartition-/releases/latest/download/courtPartition.html',
+  },
+  {
+    id: 'calculator',
+    名稱: '囑託測量收費試算',
+    說明: '法院囑託測量收費試算：多案件、扣除預繳費用、列印 A4 總表。',
+    連結: 'https://gn01918004-hub.github.io/calculator/',
+    下載: 'https://github.com/gn01918004-hub/calculator/releases/latest/download/survey-fee-calculator.html',
+  },
+  {
+    id: 'change-system',
+    名稱: '土地重測資料轉換系統',
+    說明: '抓國土測繪中心航照，輸出 JPG＋JGW；支援 67／97 坐標、套合點、年份切換。',
+    下載: 'https://github.com/gn01918004-hub/change-system/releases/latest/download/change-system.html',
+  },
+  {
+    id: 'instrument-check',
+    名稱: '儀器檢校精度分析系統',
+    說明: '測角、測距精度分析表，可匯入 Excel、直接存 PDF。',
+    下載: 'https://github.com/gn01918004-hub/sicl-nlsc-month-check/releases/latest/download/sicl-nlsc-month-check.html',
+  },
+  {
+    id: 'survey-cases',
+    名稱: '測量案件排程',
+    說明: '測量案件排程，含延期理由與 A4 延期便簽。',
+    下載: 'https://github.com/gn01918004-hub/work-paper/releases/latest/download/survey-cases.html',
+  },
+  {
+    id: 'handbook',
+    名稱: '外業自動化手簿',
+    說明: '讀圖根點 .CTL 與觀測 CSV，產生並列印光線法外業手簿。',
+    連結: 'https://gn01918004-hub.github.io/handbook/field.html',
   },
 ];
 
@@ -3391,7 +3422,7 @@ const 業務 = [
       },
     ],
     法規: ['函-合併分割', '收費標準'],
-    工具: ['courtPartition'],
+    工具: ['courtPartition', 'calculator'],
   },
   {
     id: '法院查封',
@@ -3403,6 +3434,7 @@ const 業務 = [
       { 項目: '未登記建物查封測量（依附表二項次一）', 內容: ['位置圖測量費：4,000 元（一棟）', '平面圖測量費：每層每單位 1,000 元（50 平方公尺為一單位）'] },
     ],
     法規: ['收費標準'],
+    工具: ['calculator'],
     條文: ['地測:269'],
   },
   {

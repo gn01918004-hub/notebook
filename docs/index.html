@@ -223,7 +223,7 @@ function artRef({ L, a }) {
 }
 const tile = (h, name, sub) => `<a class="tile" href="${h}">${esc(name)}${sub ? `<small>${esc(sub)}</small>` : ''}</a>`;
 const toolTile = t => `<div class="tool"><b>${esc(t.名稱)}</b><small>${esc(t.說明)}</small><div class="tool-actions">
-  <a class="btn primary" href="${esc(t.連結)}" target="_blank" rel="noopener">開啟</a>${t.下載 ? `<a class="btn" href="${esc(t.下載)}" target="_blank" rel="noopener">下載最新版</a>` : ''}</div></div>`;
+  ${t.連結 ? `<a class="btn primary" href="${esc(t.連結)}" target="_blank" rel="noopener">開啟</a>` : ''}${t.下載 ? `<a class="btn${t.連結 ? '' : ' primary'}" href="${esc(t.下載)}" rel="noopener">下載最新版</a>` : ''}</div></div>`;
 
 /* ---------- 選單 ---------- */
 function renderNav(active) {
