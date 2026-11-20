@@ -6,10 +6,21 @@
 <title>測量入口網</title>
 <style>
   :root {
-    --bg: #f4f5f7; --panel: #fff; --text: #1f2933; --muted: #6b7680;
-    --line: #e2e5e9; --accent: #1d6f8f; --accent-soft: #e6f1f5;
-    --warn: #9a5b00; --warn-soft: #fff4e0; --ok: #1b7f3b; --ok-soft: #e7f5ec;
-    --bad: #b42318; --local: #5b6470; --local-soft: #eef0f2;
+    --bg: #f3f5f8; --panel: #fff; --text: #1c2530; --muted: #66727f;
+    --line: #e1e6ec; --accent: #17698a; --accent-2: #2a8fb5; --accent-soft: #e5f2f7;
+    --warn: #995a00; --warn-soft: #fff5e3; --ok: #187a3a; --ok-soft: #e6f5ec;
+    --bad: #b42318; --local: #5b6470; --local-soft: #eef0f3;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11161c; --panel: #1a2129; --text: #e4e9ee; --muted: #98a4b0;
+      --line: #2c3540; --accent: #4fb3d9; --accent-2: #2a8fb5; --accent-soft: #1d3340;
+      --warn: #f0b45a; --warn-soft: #3a2c16; --ok: #5fcf8a; --ok-soft: #173326;
+      --bad: #ff8a80; --local: #b4bdc6; --local-soft: #262e37; --shadow: none;
+    }
+    mark { background: #6b5a14; color: #fff; }
+    .toolbar button { background: var(--panel); color: var(--text); }
   }
   * { box-sizing: border-box; }
   body {
@@ -18,9 +29,12 @@
   }
   a { color: var(--accent); }
   header {
-    position: sticky; top: 0; z-index: 5; background: var(--accent); color: #fff;
+    position: sticky; top: 0; z-index: 5; color: #fff;
+    background: linear-gradient(90deg, #135a77, #1f7fa6);
     display: flex; gap: 16px; align-items: center; padding: 10px 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.12);
   }
+  header h1 small { font-size: 12px; font-weight: normal; opacity: .8; margin-left: 6px; }
   header h1 { margin: 0; font-size: 20px; white-space: nowrap; cursor: pointer; }
   header input { flex: 1; max-width: 520px; padding: 8px 12px; border: 0; border-radius: 6px; font: inherit; }
   #menuBtn { display: none; background: none; border: 1px solid #ffffff80; color: #fff; border-radius: 6px; font: inherit; padding: 4px 10px; }
@@ -43,7 +57,20 @@
   nav details.minor { margin-top: 6px; font-size: 13px; }
   nav details.minor > summary { color: var(--muted); }
   main { flex: 1; min-width: 0; padding: 20px 24px 60px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .hero { background: linear-gradient(135deg, var(--accent-soft), var(--panel) 70%); }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 6px 0 14px; color: var(--muted); font-size: 14px; }
+  .stats b { color: var(--accent); font-size: 20px; margin-right: 3px; }
+  .group-h { margin: 14px 0 6px; font-size: 13px; font-weight: bold; color: var(--muted); letter-spacing: .08em; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+  .filters select, .filters input { font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
+  .filters input { flex: 1; min-width: 160px; }
+  .tool-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .btn { display: inline-block; font-size: 13px; padding: 3px 10px; border-radius: 6px; text-decoration: none; border: 1px solid var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .tool { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel); }
+  .tool b { display: block; }
+  .tool small { display: block; color: var(--muted); line-height: 1.5; margin-top: 2px; }
   h2 { margin: 0 0 4px; font-size: 26px; }
   h3.card-h { margin: 0 0 10px; font-size: 18px; }
   .tag { display: inline-block; font-size: 13px; color: var(--accent); background: var(--accent-soft); padding: 1px 8px; border-radius: 10px; }
@@ -65,7 +92,7 @@
   .law p { margin: 4px 0; }
   .law summary { cursor: pointer; list-style-position: outside; margin-left: 16px; }
   .law[open] summary { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
-  .law.old { background: #fafbfc; }
+  .law.old { background: var(--bg); }
   .law.old summary b { color: var(--muted); }
   .gist { font-size: 14px; margin-top: 2px; }
   .badge { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 9px; margin-left: 6px; vertical-align: 1px; white-space: nowrap; }
@@ -90,12 +117,13 @@
   .toc ul { columns: 2; font-size: 14px; }
   .meta { font-size: 13px; color: var(--muted); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-  .tile { display: block; text-decoration: none; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--panel); }
-  .tile:hover { border-color: var(--accent); }
+  .tile { display: block; text-decoration: none; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--panel); transition: border-color .15s, transform .15s; }
+  .tile:hover { border-color: var(--accent); transform: translateY(-1px); }
   .tile small { display: block; color: var(--muted); line-height: 1.5; margin-top: 2px; }
   .big { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
   .big a { display: block; text-decoration: none; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
-  .big a:hover { border-color: var(--accent); }
+  .big a:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .big a { transition: border-color .15s, transform .15s; box-shadow: var(--shadow); }
   .big b { font-size: 18px; color: var(--accent); }
   .big small { display: block; color: var(--muted); margin-top: 4px; line-height: 1.5; }
   .hist .law { border-style: dashed; }
@@ -103,7 +131,7 @@
   .todo { margin-top: 16px; font-size: 13px; color: var(--muted); }
   mark { background: #ffe58a; }
   .toolbar { float: right; }
-  .toolbar button { font: inherit; font-size: 14px; padding: 4px 12px; border: 1px solid var(--line); background: #fff; border-radius: 6px; cursor: pointer; }
+  .toolbar button { font: inherit; font-size: 14px; padding: 4px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 6px; cursor: pointer; }
   .banner { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 14px; }
   @media (max-width: 760px) {
     .layout { display: block; }
@@ -126,7 +154,7 @@
 </head>
 <body>
 <header>
-  <h1 onclick="location.hash=''">測量入口網</h1>
+  <h1 onclick="location.hash=''">測量入口網<small>作業指引・函釋沿革・法規</small></h1>
   <button id="menuBtn" onclick="document.querySelector('nav').classList.toggle('open')">選單</button>
   <input id="q" type="search" placeholder="搜尋業務、函釋、法條…（例：協界、退費、0.25公頃、重劃）">
 </header>
@@ -150,9 +178,13 @@ const 現行法規 = typeof 法規全文 === 'undefined' ? [] : 法規全文;
 const 歷史法規 = typeof 歷史法規全文 === 'undefined' ? [] : 歷史法規全文;
 const 法規表 = [...現行法規, ...歷史法規];
 const 沿革表 = typeof 沿革 === 'undefined' ? [] : 沿革;
-const 沿革分類 = [...new Set(沿革表.map(t => t.分類))];
+const 群組表 = typeof 分類群組 === 'undefined' ? [] : 分類群組;
+const 已排序 = 群組表.flatMap(g => g.分類);
+const 沿革分類 = [...new Set([...已排序, ...沿革表.map(t => t.分類)])].filter(c => 沿革表.some(t => t.分類 === c));
 const 次要分類 = 沿革分類.filter(c => 沿革表.filter(t => t.分類 === c).every(t => t.次要));
 const 主要分類 = 沿革分類.filter(c => !次要分類.includes(c));
+const 分組 = [...群組表.map(g => ({ 名稱: g.名稱, 分類: g.分類.filter(c => 主要分類.includes(c)) })),
+  { 名稱: '其他', 分類: 主要分類.filter(c => !已排序.includes(c)) }].filter(g => g.分類.length);
 const 函釋 = 法規函釋.filter(l => l.類型 !== '法規');
 const byDate = (a, b) => (b.日期 || '').localeCompare(a.日期 || '');
 const rocDate = d => { if (!d) return ''; const [y, m, dd] = d.split('-').map(Number); return `${y - 1911}.${m}.${dd}`; };
@@ -190,7 +222,8 @@ function artRef({ L, a }) {
     <p class="meta"><a href="${artHref(L.id, a.號)}">到法規全文看前後條文 →</a></p></details>`;
 }
 const tile = (h, name, sub) => `<a class="tile" href="${h}">${esc(name)}${sub ? `<small>${esc(sub)}</small>` : ''}</a>`;
-const toolTile = t => `<a class="tile" href="${esc(t.連結)}" target="_blank">${esc(t.名稱)}<small>${esc(t.說明)}</small></a>`;
+const toolTile = t => `<div class="tool"><b>${esc(t.名稱)}</b><small>${esc(t.說明)}</small><div class="tool-actions">
+  <a class="btn primary" href="${esc(t.連結)}" target="_blank" rel="noopener">開啟</a>${t.下載 ? `<a class="btn" href="${esc(t.下載)}" target="_blank" rel="noopener">下載最新版</a>` : ''}</div></div>`;
 
 /* ---------- 選單 ---------- */
 function renderNav(active) {
@@ -204,7 +237,10 @@ function renderNav(active) {
   }
   h += `<div class="sec">函釋沿革</div>`;
   const catLink = c => `<a href="${href('沿革', c)}"${on('沿革/' + c)}>${esc(c)}<span class="cnt">${沿革表.filter(t => t.分類 === c).length}</span></a>`;
-  h += 主要分類.map(catLink).join('');
+  for (const g of 分組) {
+    const open = g.分類.some(c => active === '沿革/' + c) || g === 分組[0];
+    h += grp(g.名稱, g.分類.map(catLink).join(''), open);
+  }
   h += `<a href="#函釋"${on('函釋')}>全部函釋（依日期）<span class="cnt">${函釋.length}</span></a>`;
   h += `<div class="sec">法規</div>`;
   h += 現行法規.map(L => `<a href="${artHref(L.id)}"${on('法規全文/' + L.id)}>${esc(L.名稱)}</a>`).join('');
@@ -219,9 +255,10 @@ function renderNav(active) {
 /* ---------- 首頁 ---------- */
 function renderHome() {
   $('#main').innerHTML = `
-    <div class="card">
+    <div class="card hero">
       <h2>測量入口網</h2>
       <p class="lead">查業務怎麼辦、函釋怎麼演變、法條怎麼寫。上方搜尋框可以一次找全部。</p>
+      <div class="stats"><span><b>${業務.length}</b>項作業指引</span><span><b>${沿革表.length}</b>個沿革主題</span><span><b>${函釋.length}</b>則函釋</span><span><b>${法規表.reduce((n, L) => n + L.條.length, 0)}</b>條法規條文</span></div>
       <div class="big">
         <a href="${href(業務[0].id)}"><b>作業指引</b><small>${業務.length} 項業務：應備文件、步驟、注意事項、收費</small></a>
         <a href="${href('沿革', 沿革分類[0])}"><b>函釋沿革</b><small>${沿革表.length} 個主題、${函釋.length} 則函釋，新舊見解一條線看清楚</small></a>
@@ -231,9 +268,13 @@ function renderHome() {
     <div class="card"><h3 class="card-h">作業指引</h3>
       ${groups.map(g => `<p class="meta" style="margin:10px 0 4px">${esc(g)}</p><div class="grid">${業務.filter(b => b.分類 === g).map(b => tile(href(b.id), b.名稱)).join('')}</div>`).join('')}
     </div>
-    <div class="card"><h3 class="card-h">函釋沿革</h3><div class="grid">
-      ${主要分類.map(c => tile(href('沿革', c), c, 沿革表.filter(t => t.分類 === c).map(t => t.名稱).join('、'))).join('')}
-    </div></div>
+    <div class="card"><h3 class="card-h">函釋沿革</h3>
+      ${分組.map(g => `<div class="group-h">${esc(g.名稱)}</div><div class="grid">${g.分類.map(c => tile(href('沿革', c), c, `${沿革表.filter(t => t.分類 === c).length} 個主題・${new Set(沿革表.filter(t => t.分類 === c).flatMap(t => t.項目)).size} 則`)).join('')}</div>`).join('')}
+    </div>
+    <div class="card"><h3 class="card-h">最近的函釋</h3>
+      ${函釋.filter(l => l.日期 && l.效力 !== '已停止適用').sort(byDate).slice(0, 6).map(l => `<a class="tile" style="margin-bottom:8px" href="${href('函釋', l.id)}"><span class="date">${rocDate(l.日期)}</span>${esc(l.名稱)}${lvBadge(l)}<small>${esc(l.要旨 || '')}</small></a>`).join('')}
+      <p class="meta"><a href="#函釋">看全部函釋 →</a></p>
+    </div>
     <div class="card"><h3 class="card-h">常用小工具</h3><div class="grid">${小工具.map(toolTile).join('')}</div></div>
     <p class="meta">正式作業前，請以最新法規、函釋及所內規定為準。函釋互相衝突時，以發文日期較新者為準；其他縣市的函釋僅供參考。</p>`;
 }
@@ -292,9 +333,27 @@ function renderTopics(cat, focus) {
   if (el) el.scrollIntoView();
 }
 function renderAllRulings(focus) {
+  const catOf = l => 沿革表.filter(t => t.項目.includes(l.id)).map(t => t.分類);
+  const opts = (arr, all) => `<option value="">${all}</option>` + arr.map(x => `<option>${esc(x)}</option>`).join('');
+  const lvs = [...new Set(函釋.map(l => l.層級).filter(Boolean))];
   $('#main').innerHTML = `<div class="card"><span class="tag">函釋沿革</span><h2>全部函釋（依日期）</h2>
-    <p class="meta">共 ${函釋.length} 則，新到舊排列。點標題展開全文。</p>
-    ${函釋.slice().sort(byDate).map(l => lawBlock(l, { open: l.id === focus })).join('')}</div>`;
+    <p class="meta">新到舊排列，點標題展開全文。可用下方條件篩選。</p>
+    <div class="filters">
+      <select id="fCat">${opts(沿革分類, '全部分類')}</select>
+      <select id="fLv">${opts(lvs, '全部層級')}</select>
+      <select id="fEf">${opts(['有效', '待確認', '已停止適用'], '全部效力')}</select>
+      <input id="fQ" type="search" placeholder="關鍵字（字號、名稱、內容）">
+    </div>
+    <p class="meta" id="fCnt"></p><div id="fList"></div></div>`;
+  const draw = () => {
+    const c = $('#fCat').value, lv = $('#fLv').value, ef = $('#fEf').value, q = $('#fQ').value.trim();
+    const arr = 函釋.filter(l => (!c || catOf(l).includes(c)) && (!lv || l.層級 === lv) && (!ef || l.效力 === ef)
+      && (!q || [l.名稱, l.字號, l.要旨, l.內容].join(' ').includes(q))).sort(byDate);
+    $('#fCnt').textContent = `共 ${arr.length} 則`;
+    $('#fList').innerHTML = arr.map(l => lawBlock(l, { open: l.id === focus })).join('');
+  };
+  ['fCat', 'fLv', 'fEf', 'fQ'].forEach(id => $('#' + id).addEventListener('input', draw));
+  draw();
   const el = focus && document.getElementById('law-' + focus);
   if (el) el.scrollIntoView();
 }
