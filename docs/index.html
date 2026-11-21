@@ -408,21 +408,80 @@ function textOf(o) {
   if (o && typeof o === 'object') return Object.entries(o).filter(([k]) => !['id', '連結', '工具', '法規', '相關業務', '條文', '項目', '業務'].includes(k)).map(([, v]) => textOf(v)).join('　');
   return String(o ?? '');
 }
+/* 智慧搜尋：同義詞擴充＋錯字容忍（二字詞比對）＋相關度排序 */
+const 同義詞表 = typeof 同義詞 === 'undefined' ? [] : 同義詞;
+const 問句贅字 = ['怎麼辦', '怎麼', '如何', '什麼', '甚麼', '要帶', '需要', '可不可以', '能不能', '可以', '是否', '請問', '嗎', '呢', '哪些', '規定', '問題'];
+const norm = t => String(t || '').toLowerCase().replace(/台/g, '臺').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248))
+  .replace(/(\d)\.(\d)/g, '$1點$2').replace(/[\s　，。、；：「」『』（）()《》〈〉！？!?,.;:'"\-－—_~～／/\\|＊*]+/g, '').replace(/點/g, '.');
+const bigrams = t => { const r = []; for (let i = 0; i < t.length - 1; i++) r.push(t.slice(i, i + 2)); return t.length === 1 ? [t] : r; };
+let 搜尋索引 = null;
+function buildIndex() {
+  const idx = [];
+  const add = (sec, title, body, h, extra) => idx.push({ sec, title, body, h, extra, nt: norm(title), nb: norm(body) });
+  for (const b of 業務) add('作業指引', b.名稱, textOf(b) + (b.收費 ? '　收費' : '') + (b.文件 ? '　文件' : ''), href(b.id));
+  for (const t of 沿革表) add('函釋沿革', t.名稱, textOf(t), href('沿革', t.分類, t.id));
+  for (const l of 法規函釋) add('函釋與法規', (l.日期 ? rocDate(l.日期) + ' ' : '') + l.名稱, textOf(l), l.類型 === '法規' ? href('法規', l.id) : href('函釋', l.id), { law: l });
+  for (const L of 法規表) for (const a of L.條) add('法規條文', L.名稱 + ' ' + artLabel(a.號), (a.標題 || '') + ' ' + a.內容, artHref(L.id, a.號), { old: L.歷史 });
+  for (const t of 小工具) add('小工具', t.名稱, textOf(t), null, { tool: t });
+  return idx;
+}
+function expandTerms(q) {
+  const raw = q.trim().split(/\s+/).map(norm).filter(Boolean);
+  const out = [];
+  for (const w of raw) {
+    let core = w; for (const x of 問句贅字) core = core.split(x).join('');
+    if (!core) core = w;
+    // 找出句中出現的同義詞（長的優先），每個概念各成一組，必須都符合
+    const found = [];
+    let rest = core;
+    const all = 同義詞表.flatMap((g, gi) => g.map(x => ({ x: norm(x), gi }))).sort((m, n) => n.x.length - m.x.length);
+    for (const { x, gi } of all) if (x && rest.includes(x) && !found.some(f => f.gi === gi)) { found.push({ x, gi }); rest = rest.split(x).join('|'); }
+    for (const f of found) {
+      const ng = 同義詞表[f.gi].map(norm);
+      out.push(ng);
+      expandTerms.syn.push(...ng.filter(x => x !== f.x));
+    }
+    for (const piece of rest.split('|')) if (piece.length >= 2 || (!found.length && piece)) { const g = [piece]; g.opt = found.length > 0; out.push(g); }
+  }
+  return out.length ? out : [[norm(q)]];
+}
+function scoreDoc(d, groups) {
+  let total = 0, exact = true;
+  for (const alts of groups) {
+    let best = 0, ex = false;
+    for (const a of alts) {
+      if (d.nt.includes(a)) { best = Math.max(best, 12 + a.length); ex = true; continue; }
+      if (d.nb.includes(a)) { best = Math.max(best, 6 + a.length / 2); ex = true; continue; }
+      if (a.length < 3) continue;
+      const bg = bigrams(a), hitT = bg.filter(x => d.nt.includes(x)).length, hitB = bg.filter(x => d.nb.includes(x)).length;
+      const r = Math.max(hitT, hitB) / bg.length;
+      if (r >= 0.6) best = Math.max(best, r * (hitT >= hitB ? 4 : 2));
+    }
+    if (!best) { if (alts.opt) continue; return { score: 0 }; }
+    if (!ex) exact = false;
+    total += best;
+  }
+  return { score: total, exact };
+}
 function renderSearch(q) {
-  const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const hit = o => { const t = textOf(o).toLowerCase(); return terms.every(k => t.includes(k)); };
-  const hl = s => { let h = esc(s); for (const k of terms) h = h.replace(new RegExp(esc(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); return h; };
-  const snippet = o => { const t = textOf(o).replace(/\n/g, ' '); const i = t.toLowerCase().indexOf(terms[0]); return hl(t.slice(Math.max(0, i - 30), i + 60)); };
-  const row = (h, name, o, extra = '') => `<a class="tile" href="${h}" style="margin-bottom:8px">${hl(name)}${extra}<small>…${snippet(o)}…</small></a>`;
-  const bs = 業務.filter(hit), ts = 沿革表.filter(hit), ls = 法規函釋.filter(hit).sort(byDate), tools = 小工具.filter(hit);
-  const as = 法規表.flatMap(L => L.條.filter(a => hit({ x: a.標題 + a.內容 })).map(a => ({ L, a })));
-  const none = !bs.length && !ts.length && !ls.length && !as.length && !tools.length;
+  if (!搜尋索引) 搜尋索引 = buildIndex();
+  expandTerms.syn = [];
+  const groups = expandTerms(q);
+  const marks = [...new Set([...groups.flat(), ...expandTerms.syn])].filter(x => x.length >= 1).sort((a, b) => b.length - a.length);
+  const hl = s => { let h = esc(s); for (const k of marks) { const re = new RegExp(esc(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); h = h.replace(re, m => `<mark>${m}</mark>`); } return h.replace(/<\/mark><mark>/g, ''); };
+  const snippet = t => { const low = t.toLowerCase().replace(/台/g, '臺'); let i = -1; for (const k of marks) { i = low.indexOf(k); if (i >= 0) break; } if (i < 0) for (const k of marks) for (const b of bigrams(k)) { i = low.indexOf(b); if (i >= 0) break; } return hl(t.replace(/\n/g, ' ').slice(Math.max(0, i - 30), Math.max(0, i - 30) + 90)); };
+  const res = 搜尋索引.map(d => ({ d, ...scoreDoc(d, groups) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+  const exactN = res.filter(r => r.exact).length, anyExact = exactN > 0;
+  const shown = exactN >= 3 ? res.filter(r => r.exact) : res;
+  const sec = name => shown.filter(r => r.d.sec === name);
+  const row = r => r.d.extra && r.d.extra.tool ? '' : `<a class="tile" href="${r.d.h}" style="margin-bottom:8px">${hl(r.d.title)}${r.d.extra && r.d.extra.law ? lvBadge(r.d.extra.law) + efBadge(r.d.extra.law) : ''}${r.d.extra && r.d.extra.old ? '<span class="badge lv-other">已廢止</span>' : ''}<small>…${snippet(r.d.body)}…</small></a>`;
+  const block = (name, max) => { const arr = sec(name); if (!arr.length) return ''; return `<h4>${name} <span class="meta">（${arr.length} 筆${arr.length > max ? `，顯示最相關的 ${max} 筆` : ''}）</span></h4>${arr.slice(0, max).map(row).join('')}`; };
+  const extraWords = [...new Set(expandTerms.syn)].filter(x => !norm(q).includes(x));
+  const tools = sec('小工具').map(r => r.d.extra.tool);
   $('#main').innerHTML = `<div class="card"><h2>搜尋：${esc(q)}</h2>
-    ${none ? '<p class="meta">找不到相關內容，可以換個關鍵字，或用空白分隔多個關鍵字。</p>' : ''}
-    ${bs.length ? `<h4>作業指引</h4>${bs.map(b => row(href(b.id), b.名稱, b)).join('')}` : ''}
-    ${ts.length ? `<h4>函釋沿革</h4>${ts.map(t => row(href('沿革', t.分類, t.id), t.名稱, t)).join('')}` : ''}
-    ${ls.length ? `<h4>函釋與法規</h4>${ls.map(l => row(l.類型 === '法規' ? href('法規', l.id) : href('函釋', l.id), (l.日期 ? rocDate(l.日期) + ' ' : '') + l.名稱, l, lvBadge(l))).join('')}` : ''}
-    ${as.length ? `<h4>法規條文 <span class="meta">（${as.length} 條${as.length > 30 ? '，顯示前 30 條' : ''}）</span></h4>${as.slice(0, 30).map(({ L, a }) => row(artHref(L.id, a.號), L.名稱 + ' ' + artLabel(a.號), { x: a.內容 }, L.歷史 ? '<span class="badge lv-other">已廢止</span>' : '')).join('')}` : ''}
+    ${extraWords.length ? `<p class="meta">也一併搜尋：${extraWords.slice(0, 8).map(esc).join('、')}</p>` : ''}
+    ${!shown.length ? '<p class="meta">找不到相關內容。可以換個說法（例如「保登」→「保存登記」），或用空白分隔多個關鍵字。</p>' : !anyExact ? '<p class="banner">沒有完全符合的內容，以下是最接近的結果。</p>' : ''}
+    ${block('作業指引', 10)}${block('函釋沿革', 10)}${block('函釋與法規', 20)}${block('法規條文', 20)}
     ${tools.length ? `<h4>小工具</h4><div class="grid">${tools.map(toolTile).join('')}</div>` : ''}
   </div>`;
 }
@@ -452,9 +511,10 @@ function route() {
   else renderHome();
 }
 
+let 搜尋計時 = null;
 $('#q').addEventListener('input', e => {
-  const q = e.target.value;
-  if (q.trim()) { renderNav(null); renderSearch(q); } else route();
+  clearTimeout(搜尋計時);
+  搜尋計時 = setTimeout(() => { const q = e.target.value; if (q.trim()) { renderNav(null); renderSearch(q); } else route(); }, 150);
 });
 window.addEventListener('hashchange', () => { $('#q').value = ''; route(); });
 route();
