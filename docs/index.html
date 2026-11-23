@@ -246,7 +246,7 @@ function renderNav(active) {
   h += 現行法規.map(L => `<a href="${artHref(L.id)}"${on('法規全文/' + L.id)}>${esc(L.名稱)}</a>`).join('');
   h += 法規函釋.filter(l => l.類型 === '法規').map(l => `<a href="${href('法規', l.id)}"${on('法規/' + l.id)}>${esc(l.名稱.replace(/（.*?）/g, ''))}</a>`).join('');
   h += `<a href="#歷史法規"${on('歷史法規') || (active || '').startsWith('法規全文/h') ? ' class="on"' : ''}>歷史法規沿革</a>`;
-  h += `<div class="sec">其他</div><a href="#小工具"${on('小工具')}>小工具</a>`;
+  h += `<div class="sec">其他</div><a href="#小工具"${on('小工具')}>小工具</a><a href="#共作區"${on('共作區')}>共作區（投稿・經驗分享）</a>`;
   if (次要分類.length) h += `<details class="minor"${次要分類.some(c => active === '沿革/' + c) ? ' open' : ''}><summary>其他函釋</summary>${次要分類.map(catLink).join('')}</details>`;
   $('#nav').innerHTML = h;
   $('#nav').classList.remove('open');
@@ -276,6 +276,7 @@ function renderHome() {
       <p class="meta"><a href="#函釋">看全部函釋 →</a></p>
     </div>
     <div class="card"><h3 class="card-h">常用小工具</h3><div class="grid">${小工具.map(toolTile).join('')}</div></div>
+    <div class="card"><h3 class="card-h">共作區</h3><p style="margin:0">有好用的公文、函釋或辦案經驗？<a href="#共作區">到共作區投稿或分享 →</a></p></div>
     <p class="meta">正式作業前，請以最新法規、函釋及所內規定為準。函釋互相衝突時，以發文日期較新者為準；其他縣市的函釋僅供參考。</p>`;
 }
 
@@ -398,6 +399,26 @@ function renderHistory() {
     }).join('')}</div></div>`).join('')}`;
 }
 
+function renderCollab() {
+  const c = typeof 共作區 === 'undefined' ? {} : 共作區;
+  const card = (title, desc, url, btn) => `<div class="tool"><b>${esc(title)}</b><small>${esc(desc)}</small><div class="tool-actions">
+    ${url ? `<a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener">${btn}</a>` : '<span class="meta">表單準備中</span>'}</div></div>`;
+  $('#main').innerHTML = `<div class="card"><span class="tag">共作區</span><h2>一起充實入口網</h2>
+    <p class="lead">手邊有好用的公文、函釋、會議紀錄，或是辦案的經驗，歡迎分享。</p>
+    <div class="big" style="margin-top:12px">
+      ${card('資料投稿', '上傳 PDF、Word 或圖片（函釋、公文、會議紀錄、作業範本）。需登入 Google 帳號。', c.投稿表單, '我要投稿')}
+      ${card('經驗分享', '寫下辦案遇到的狀況與處理方式，幫新同事少走冤枉路。', c.經驗表單, '分享經驗')}
+    </div>
+    <h4>投稿後會怎麼處理</h4>
+    <ol>
+      <li>投稿內容先存在管理者的雲端硬碟，<b>不會直接公開</b>。</li>
+      <li>管理者整理：去除個資、確認是否仍有效、與既有函釋比對新舊。</li>
+      <li>整理後放進對應的作業指引、函釋沿革或「實務經驗與案例」。</li>
+    </ol>
+    <div class="note">請勿在投稿中填寫民眾姓名、身分證號、地號等個資；可改寫成「某甲」「○○段○○地號」。</div>
+  </div>`;
+}
+
 function renderTools() {
   $('#main').innerHTML = `<div class="card"><h2>小工具</h2><div class="grid">${小工具.map(toolTile).join('')}</div></div>`;
 }
@@ -498,7 +519,7 @@ function route() {
   else if (L) active = '法規全文/' + L.id;
   else if (law) active = '法規/' + law.id;
   else if (id === '沿革') active = '沿革/' + (sub || 沿革分類[0]);
-  else if (['函釋', '歷史法規', '小工具'].includes(id)) active = id;
+  else if (['函釋', '歷史法規', '小工具', '共作區'].includes(id)) active = id;
   renderNav(active);
   window.scrollTo(0, 0);
   if (b) renderItem(b);
@@ -508,6 +529,7 @@ function route() {
   else if (id === '函釋' || id === '法規函釋') renderAllRulings(sub);
   else if (id === '歷史法規') renderHistory();
   else if (id === '小工具') renderTools();
+  else if (id === '共作區') renderCollab();
   else renderHome();
 }
 
