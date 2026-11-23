@@ -116,8 +116,8 @@ const 同義詞 = [
 
 /* ---------- 共作區：Google 表單連結（建好表單後填入網址）---------- */
 const 共作區 = {
-  投稿表單: '',
-  經驗表單: '',
+  投稿表單: 'https://docs.google.com/forms/d/e/1FAIpQLSdDY29x6d7WZavjtPLSjSi11z_l_IYiN7iy_6gjIEk1LxTHmw/viewform',
+  經驗表單: 'https://docs.google.com/forms/d/e/1FAIpQLScsbH7hX_MywmZ4CtxPyo09x3Zdhg7TWwUBDJIOb6KkaFrKmQ/viewform',
 };
 
 /* ---------- 共同注意事項（每個業務頁最下面都會顯示） ---------- */
