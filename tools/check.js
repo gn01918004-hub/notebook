@@ -9,6 +9,7 @@ for (const b of 業務) {
   for (const r of b.條文 || []) if (!art(r)) bad.push(b.id + ' 條文 ' + r);
 }
 for (const t of 沿革) {
+  for (const r of t.條文 || []) if (!art(r)) bad.push('沿革 ' + t.id + ' 條文 ' + r);
   for (const i of t.項目) if (!ids.has(i)) bad.push('沿革 ' + t.id + ' 項目 ' + i);
   for (const i of t.業務 || []) if (!bids.has(i)) bad.push('沿革 ' + t.id + ' 業務 ' + i);
 }
@@ -16,6 +17,7 @@ for (const g of 歷史沿革) for (const x of g.項目) {
   if (x.全文 && !歷史法規全文.find(h => h.id === x.全文)) bad.push('歷史 全文 ' + x.全文);
   if (x.現行 && !art(x.現行)) bad.push('歷史 現行 ' + x.現行);
 }
+for (const l of 法規函釋) for (const r of l.條文 || []) if (!art(r)) bad.push(l.id + ' 條文 ' + r);
 for (const l of 法規函釋) if (l.類型 !== '法規' && !l.層級) bad.push('缺層級 ' + l.id);
 const orphan = 法規函釋.filter(l => l.類型 !== '法規' && !沿革.some(t => t.項目.includes(l.id))).map(l => l.id);
 if (ids.size !== 法規函釋.length || bids.size !== 業務.length || new Set(沿革.map(t => t.id)).size !== 沿革.length) bad.push('duplicate id');
