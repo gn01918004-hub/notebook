@@ -200,12 +200,19 @@ const lvBadge = l => l.層級 ? `<span class="badge ${l.層級 === '中央' || l
 const efBadge = l => l.效力 ? `<span class="badge ef-${esc(l.效力)}">${esc(l.效力)}</span>` : '';
 function artBlock(L, a) {
   const note = a.立法意旨 ? `<details class="intent"><summary>立法意旨／附註</summary>${paras(a.立法意旨)}</details>` : '';
-  return `<div class="art" id="art-${esc(L.id)}-${esc(a.號)}"><b>${artLabel(a.號)}</b>${a.標題 ? `　<span class="meta">${esc(a.標題.replace(/^（|）$/g, ''))}</span>` : ''}${paras(a.內容)}${note}</div>`;
+  const ref = L.id + ':' + a.號;
+  const ts = 沿革表.filter(t => (t.條文 || []).includes(ref));
+  const ex = 函釋.filter(l => (l.條文 || []).includes(ref) && !ts.some(t => t.項目.includes(l.id)));
+  const interp = ts.length || ex.length ? `<p class="meta interp">解釋函：${[
+    ...ts.map(t => `<a href="${href('沿革', t.分類, t.id)}">${esc(t.名稱)}（${t.項目.length}則）</a>`),
+    ...ex.map(l => `<a href="${href('函釋', l.id)}">${esc(l.名稱)}</a>`)].join('、')}</p>` : '';
+  return `<div class="art" id="art-${esc(L.id)}-${esc(a.號)}"><b>${artLabel(a.號)}</b>${a.標題 ? `　<span class="meta">${esc(a.標題.replace(/^（|）$/g, ''))}</span>` : ''}${paras(a.內容)}${note}${interp}</div>`;
 }
 function lawBlock(l, opt = {}) {
   const topics = 沿革表.filter(t => t.項目.includes(l.id));
   const used = 業務.filter(b => (b.法規 || []).includes(l.id));
   const links = [
+    ...(l.條文 || []).map(findArt).filter(x => x && x.a).map(({ L, a }) => `<a href="${artHref(L.id, a.號)}">${esc(L.名稱)} ${artLabel(a.號)}</a>`),
     ...topics.filter(t => t.id !== opt.topic).map(t => `<a href="${href('沿革', t.分類, t.id)}">沿革：${esc(t.名稱)}</a>`),
     ...(l.id === '收費標準' ? [] : used.map(b => `<a href="${href(b.id)}">${esc(b.名稱)}</a>`)),
   ];
@@ -320,6 +327,7 @@ function topicBlock(t, focus) {
   return `<div class="card topic" id="topic-${esc(t.id)}">
     <h3 class="card-h">${esc(t.名稱)}</h3>
     <div class="now"><b>現行見解：</b>${esc(t.現行)}</div>
+    ${(t.條文 || []).map(findArt).filter(x => x && x.a).map(artRef).join('')}
     <div class="tl">${items.map(l => lawBlock(l, { topic: t.id, first: l === firstOk, open: focus && l === firstOk })).join('')}</div>
     <p class="meta">共 ${items.length} 則，新到舊排列；綠點為最新有效的一則。${biz.length ? '作業指引：' + biz.map(b => `<a href="${href(b.id)}">${esc(b.名稱)}</a>`).join('、') : ''}</p>
   </div>`;
