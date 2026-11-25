@@ -327,10 +327,15 @@ function topicBlock(t, focus) {
   return `<div class="card topic" id="topic-${esc(t.id)}">
     <h3 class="card-h">${esc(t.名稱)}</h3>
     <div class="now"><b>現行見解：</b>${esc(t.現行)}</div>
-    ${(t.條文 || []).map(findArt).filter(x => x && x.a).map(artRef).join('')}
+    ${topicArts(t)}
     <div class="tl">${items.map(l => lawBlock(l, { topic: t.id, first: l === firstOk, open: focus && l === firstOk })).join('')}</div>
     <p class="meta">共 ${items.length} 則，新到舊排列；綠點為最新有效的一則。${biz.length ? '作業指引：' + biz.map(b => `<a href="${href(b.id)}">${esc(b.名稱)}</a>`).join('、') : ''}</p>
   </div>`;
+}
+function topicArts(t) {
+  const arr = (t.條文 || []).map(findArt).filter(x => x && x.a);
+  if (arr.length < 2) return arr.map(artRef).join('');
+  return `<details class="fold"><summary>解釋的條文 <span class="meta">（${arr.map(({ L, a }) => esc(L.名稱.replace('地籍測量實施規則', '地測')) + ' ' + artLabel(a.號)).join('、')}；點開查看）</span></summary><div>${arr.map(artRef).join('')}</div></details>`;
 }
 function renderTopics(cat, focus) {
   const ts = 沿革表.filter(t => t.分類 === cat);
